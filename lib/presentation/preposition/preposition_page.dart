@@ -1,14 +1,12 @@
+import 'package:basedFlutter/domain/model/preposition_model.dart';
+import 'package:basedFlutter/presentation/based/based_text_view.dart';
+import 'package:basedFlutter/presentation/preposition/preposition_page_style.dart';
 import 'package:flutter/material.dart';
-import 'package:ruangmom/domain/models/preposition_model.dart';
-import 'package:ruangmom/presentation/base/textview/one_text_view.dart';
-import 'package:ruangmom/presentation/preposition/preposition_page_style.dart';
 
 class PrepositionPage extends StatelessWidget {
   final PreposititonModel prepModel;
 
-  const PrepositionPage(
-      {Key key, @required this.prepModel})
-      : super(key: key);
+  const PrepositionPage({Key key, @required this.prepModel}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -23,13 +21,13 @@ class PrepositionPage extends StatelessWidget {
               child: Image.asset(prepModel.imagePath)),
           Container(
               margin: const EdgeInsets.only(left: 23, right: 23, bottom: 10),
-              child: OneTextView(
+              child: BasedTextView(
                 style: _prepositionPageStyle.textTitleStyle,
                 text: prepModel.title,
               )),
           Container(
               margin: const EdgeInsets.only(left: 40, right: 40),
-              child: OneTextView(
+              child: BasedTextView(
                 style: _prepositionPageStyle.textDescStyle,
                 text: prepModel.desc,
               ))

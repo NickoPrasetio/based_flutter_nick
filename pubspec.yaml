@@ -55,7 +55,31 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/strings/id.json
+    - assets/images/based_splash.png
 
+  fonts:
+    - family: MontserratRegular
+      fonts:
+        - asset: assets/fonts/montserrat-regular.ttf
+    - family: MontserratBold
+      fonts:
+        - asset: assets/fonts/montserrat-bold.ttf
+          weight: 700
+    - family: MontserratSemiBold
+      fonts:
+        - asset: assets/fonts/montserrat-semibold.ttf
+    - family: KumbhSansRegular
+      fonts:
+        - asset: assets/fonts/kumbhsans-regular.ttf
+    - family: KumbhSansBold
+      fonts:
+        - asset: assets/fonts/kumbhsans-bold.ttf
+          weight: 700
+    - family: KumbhSansSemiBold
+      fonts:
+        - asset: assets/fonts/kumbhsans-semibold.ttf
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

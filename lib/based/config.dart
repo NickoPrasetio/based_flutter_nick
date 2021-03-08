@@ -18,10 +18,7 @@ class Config {
     String clientVersion,
     String deviceId,
     String packageId,
-    ByteData primaryCer,
-    ByteData backupCer,
     String versionCode,
-    String amplitudeKey,
   ) {
     final config = {
       baseUrlConst: baseUrl,

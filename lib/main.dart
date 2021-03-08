@@ -1,46 +1,30 @@
-import 'package:amplitude_flutter/amplitude.dart';
-import 'package:firebase_analytics/observer.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
-import 'package:firebase_performance/firebase_performance.dart';
+import 'package:basedFlutter/based/app_localization.dart';
+import 'package:basedFlutter/based/config.dart';
+import 'package:basedFlutter/based/network/app_remote_datasource.dart';
+import 'package:basedFlutter/based/routes/routes.dart';
+import 'package:basedFlutter/presentation/splash/splash_page.dart';
+import 'package:basedFlutter/util/back_button_delegate.dart';
+import 'package:basedFlutter/util/channel_platform.dart';
+import 'package:basedFlutter/util/font_families.dart';
+import 'package:basedFlutter/util/palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:oktoast/oktoast.dart';
-import 'package:sailor/sailor.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:workfit/base/app_localization.dart';
-import 'package:workfit/base/config.dart';
-import 'package:workfit/base/module/base_module.dart';
-import 'package:workfit/base/routes.dart';
-import 'package:workfit/data/datasources/remote/apps_remote_data_source.dart';
-import 'package:workfit/presentation/account/login/account/login_page.dart';
-import 'package:workfit/presentation/base/base_style.dart';
-import 'package:workfit/presentation/splash/splash_page.dart';
-import 'package:workfit/util/analytic_handler.dart';
-import 'package:workfit/util/back_button_delegate.dart';
-import 'package:workfit/util/chanel_platform.dart';
-import 'package:workfit/util/notification_handler.dart';
-import 'package:workfit/util/palette.dart';
+import 'based/modul/based_modul.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
   initModule();
   Routes.createRoutes();
   await _getBaseConfig();
-  runApp(WorkFitApp());
+  runApp(BasedFlutterApp());
 }
 
 Future<void> _getBaseConfig() async {
   try {
     final result =
         await ChanelPlatform.baseConfigPlatform.invokeMethod('getBaseConfig');
-    final ByteData primaryCert =
-        await _getPrimaryCert(result[Config.primaryCertificateConst]);
-    final ByteData backupCert =
-        await _getBackupCert(result[Config.backupCertificateConst]);
     Config.setConfig(
       result[Config.baseUrlConst],
       result[Config.debuggableConst],
@@ -48,26 +32,14 @@ Future<void> _getBaseConfig() async {
       result[Config.clientVersionConst],
       result[Config.deviceIdConst],
       result[Config.packageIdConst],
-      primaryCert,
-      backupCert,
       result[Config.versionCodeConst],
-      result[Config.amplitudeKeyConst],
     );
   } on PlatformException catch (e) {
     print(e);
   }
 }
 
-Future<ByteData> _getPrimaryCert(String path) async {
-  return await rootBundle.load('assets/cer/' + path);
-}
-
-Future<ByteData> _getBackupCert(String path) async {
-  return await rootBundle.load('assets/cer/' + path);
-}
-
 class BasedFlutterApp extends StatefulWidget {
-
   @override
   State<StatefulWidget> createState() {
     return _BasedFlutterApp();
@@ -76,83 +48,17 @@ class BasedFlutterApp extends StatefulWidget {
 
 class _BasedFlutterApp extends State<BasedFlutterApp> {
   var appsService = injector<AppsRemoteDataSource>();
-  var notificationHandler = injector<NotificationHandler>();
-  var analyticHandler = injector<AnalyticHandler>();
-  String _idForDeepLink, _pathForDeepLink, _instanceIdForDeepLink;
 
   @override
   void initState() {
     super.initState();
-    // To Do Later For DeepLink
-    // _initDynamicLinks();
-    notificationHandler.init(_handleDeepLink);
   }
 
-  Future<void> _initDynamicLinks() async {
-    final PendingDynamicLinkData data =
-        await FirebaseDynamicLinks.instance.getInitialLink();
-    final Uri deepLink = data?.link;
-    if (deepLink != null) {
-      Routes.sailor.navigate(deepLink.path);
-    }
-    FirebaseDynamicLinks.instance.onLink(
-        onSuccess: (PendingDynamicLinkData dynamicLink) async {
-      final Uri deepLink = dynamicLink?.link;
-      if (deepLink != null) {
-        Routes.sailor.navigate(deepLink.path);
-      }
-    }, onError: (OnLinkErrorException e) async {
-      print('onLinkError');
-      print(e.message);
-    });
-  }
-
-  void _handleDeepLink(Map<String, dynamic> payload, bool isFromForeground) {
-    _idForDeepLink = payload[NotificationHandler.idArgs];
-    _pathForDeepLink = payload[NotificationHandler.pathArgs];
-    _instanceIdForDeepLink = payload[NotificationHandler.instanceIdArgs];
-
-    if (isFromForeground &&
-        _pathForDeepLink != null &&
-        _pathForDeepLink.isNotEmpty) {
-      Routes.sailor.navigate(_pathForDeepLink, params: {
-        NotificationHandler.instanceIdArgs: _instanceIdForDeepLink,
-        NotificationHandler.idArgs: _idForDeepLink,
-      });
-      _pathForDeepLink = '';
-    }
-  }
-
-  void _navigateToDeepLink() {
-    Routes.sailor.navigate(_pathForDeepLink,
-        params: {
-          NotificationHandler.instanceIdArgs: _instanceIdForDeepLink,
-          NotificationHandler.idArgs: _idForDeepLink,
-          NotificationHandler.isRootRouteArgs: true,
-        },
-        navigationType: NavigationType.pushReplace);
-    _pathForDeepLink = '';
-  }
-
-  void _navigateToDashboard(BuildContext context) {
-    Navigator.pushReplacement(context, dashboardPageRoute(context));
-  }
-
-  void _navigateToLoginPage() {
-    Routes.sailor.navigate(Routes.pageLogin,
-        navigationType: NavigationType.pushReplace,
-        params: {LoginPage.isChangeNumberPageParam: false});
-  }
-
-  void _navigateForBackGroundDeepLink(bool isLoggedIn, BuildContext context) {
-    if (!isLoggedIn) {
-      _navigateToLoginPage();
-    } else if (_pathForDeepLink != null && _pathForDeepLink.isNotEmpty) {
-      _navigateToDeepLink();
-    } else {
-      _navigateToDashboard(context);
-    }
-  }
+  // void _navigateToLoginPage() {
+  //   Routes.sailor.navigate(Routes.pageLogin,
+  //       navigationType: NavigationType.pushReplace,
+  //       params: {LoginPage.isChangeNumberPageParam: false});
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -183,9 +89,6 @@ class _BasedFlutterApp extends State<BasedFlutterApp> {
         ),
         debugShowCheckedModeBanner: false,
         locale: const Locale('id', 'ID'),
-        navigatorObservers: [
-          FirebaseAnalyticsObserver(analytics: analyticHandler.analytics),
-        ],
         navigatorKey: Routes.sailor.navigatorKey,
         onGenerateRoute: Routes.sailor.generator(),
         // ignore: prefer_const_literals_to_create_immutables
@@ -198,7 +101,7 @@ class _BasedFlutterApp extends State<BasedFlutterApp> {
           GlobalWidgetsLocalizations.delegate,
         ],
         home: Scaffold(
-          body: SplashPage(deepLinkHandler: _navigateForBackGroundDeepLink),
+          body: SplashPage(),
         ),
       ),
     );
