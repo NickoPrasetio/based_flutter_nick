@@ -1,40 +1,36 @@
 import 'package:amplitude_flutter/amplitude.dart';
-import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:firebase_analytics/observer.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:ruangmom/base/config.dart';
-import 'package:ruangmom/base/module/base_module.dart';
-import 'package:ruangmom/base/routes.dart';
-import 'package:ruangmom/data/datasources/remote/apps_remote_data_source.dart';
-import 'package:ruangmom/presentation/dashboard/dashboard_page.dart';
-import 'package:ruangmom/presentation/splash/splash_page.dart';
-import 'package:ruangmom/util/analytic_handler.dart';
-import 'package:ruangmom/util/back_button_delegate.dart';
-import 'package:ruangmom/util/chanel_platform.dart';
-import 'package:ruangmom/util/notification_handler.dart';
-import 'package:ruangmom/util/palette.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:sailor/sailor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-import 'base/app_localization.dart';
-import 'presentation/splash/splash_page.dart';
+import 'package:workfit/base/app_localization.dart';
+import 'package:workfit/base/config.dart';
+import 'package:workfit/base/module/base_module.dart';
+import 'package:workfit/base/routes.dart';
+import 'package:workfit/data/datasources/remote/apps_remote_data_source.dart';
+import 'package:workfit/presentation/account/login/account/login_page.dart';
+import 'package:workfit/presentation/base/base_style.dart';
+import 'package:workfit/presentation/splash/splash_page.dart';
+import 'package:workfit/util/analytic_handler.dart';
+import 'package:workfit/util/back_button_delegate.dart';
+import 'package:workfit/util/chanel_platform.dart';
+import 'package:workfit/util/notification_handler.dart';
+import 'package:workfit/util/palette.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await SharedPreferences.getInstance();
-  await _getBaseConfig();
   initModule();
   Routes.createRoutes();
-  _setupCrashlytics();
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(RuangMomApp());
+  await _getBaseConfig();
+  runApp(WorkFitApp());
 }
 
 Future<void> _getBaseConfig() async {
@@ -46,21 +42,17 @@ Future<void> _getBaseConfig() async {
     final ByteData backupCert =
         await _getBackupCert(result[Config.backupCertificateConst]);
     Config.setConfig(
-        result[Config.baseUrlConst],
-        result[Config.debuggableConst],
-        result[Config.clientIdConst],
-        result[Config.clientVersionConst],
-        result[Config.deviceIdConst],
-        result[Config.packageIdConst],
-        result[Config.afAppIdConst],
-        primaryCert,
-        backupCert,
-        result[Config.amplitudeKeyConst],
-        result[Config.oneLinkUrlConst],
-        result[Config.oneSignalAppIdConst],
-        result[Config.oneHostRMConst]);
-    _setupAppsFlyer();
-    _setupAmplitude();
+      result[Config.baseUrlConst],
+      result[Config.debuggableConst],
+      result[Config.clientIdConst],
+      result[Config.clientVersionConst],
+      result[Config.deviceIdConst],
+      result[Config.packageIdConst],
+      primaryCert,
+      backupCert,
+      result[Config.versionCodeConst],
+      result[Config.amplitudeKeyConst],
+    );
   } on PlatformException catch (e) {
     print(e);
   }
@@ -74,163 +66,130 @@ Future<ByteData> _getBackupCert(String path) async {
   return await rootBundle.load('assets/cer/' + path);
 }
 
-
-void _setupCrashlytics() {
-    FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
-}
-
-void _setupAppsFlyer() {
-  final AppsFlyerOptions options = AppsFlyerOptions(
-    afDevKey: 'HRGTHNQgJu7Xi4QENQY7sN',
-    appId: Config.getAfAppId(),
-    showDebug: Config.isDebuggable(),
-  );
-  RuangMomApp.appsflyerSdk = AppsflyerSdk(options);
-  RuangMomApp.appsflyerSdk.initSdk(
-      registerConversionDataCallback: true,
-      registerOnAppOpenAttributionCallback: true);
-}
-
-void _setupAmplitude() {
-  final String amplitudeKey = Config.getAmplitudeKey().toString();
-  final Amplitude amplitude = Amplitude(amplitudeKey);
-  amplitude.init(amplitudeKey);
-  RuangMomApp.amplitudeSdk = amplitude;
-}
-
-class RuangMomApp extends StatefulWidget {
-  static AppsflyerSdk appsflyerSdk;
-  static Amplitude amplitudeSdk;
-  static AppLifecycleState _lastLifecyleState = AppLifecycleState.detached;
-
-  static Future<bool> trackEvent(String eventName) {
-    final Map eventValues = {};
-    return appsflyerSdk.logEvent(eventName, eventValues);
-  }
+class BasedFlutterApp extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    return _RuangMomAppState();
-  }
-
-  static AppLifecycleState lifecycleState() {
-    return _lastLifecyleState;
-  }
-
-  static void updateLifeCycleState(AppLifecycleState state) {
-    _lastLifecyleState = state;
+    return _BasedFlutterApp();
   }
 }
 
-class _RuangMomAppState extends State<RuangMomApp> {
+class _BasedFlutterApp extends State<BasedFlutterApp> {
   var appsService = injector<AppsRemoteDataSource>();
   var notificationHandler = injector<NotificationHandler>();
   var analyticHandler = injector<AnalyticHandler>();
-  Map<String, dynamic> _idForDeepLink;
-  String _pathForDeepLink, _launchUrlFromDeeplink;
-
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  String _idForDeepLink, _pathForDeepLink, _instanceIdForDeepLink;
 
   @override
   void initState() {
     super.initState();
+    // To Do Later For DeepLink
+    // _initDynamicLinks();
     notificationHandler.init(_handleDeepLink);
-    _handleAppLifecycleState();
   }
 
-  void _handleAppLifecycleState() {
-    SystemChannels.lifecycle.setMessageHandler((msg) {
-      switch (msg) {
-        case 'AppLifecycleState.paused':
-          RuangMomApp.updateLifeCycleState(AppLifecycleState.paused);
-          break;
-        case 'AppLifecycleState.inactive':
-          RuangMomApp.updateLifeCycleState(AppLifecycleState.inactive);
-          break;
-        case 'AppLifecycleState.resumed':
-          RuangMomApp.updateLifeCycleState(AppLifecycleState.resumed);
-          break;
-        case 'AppLifecycleState.detached':
-          RuangMomApp.updateLifeCycleState(AppLifecycleState.detached);
-          break;
-        default:
-          break;
+  Future<void> _initDynamicLinks() async {
+    final PendingDynamicLinkData data =
+        await FirebaseDynamicLinks.instance.getInitialLink();
+    final Uri deepLink = data?.link;
+    if (deepLink != null) {
+      Routes.sailor.navigate(deepLink.path);
+    }
+    FirebaseDynamicLinks.instance.onLink(
+        onSuccess: (PendingDynamicLinkData dynamicLink) async {
+      final Uri deepLink = dynamicLink?.link;
+      if (deepLink != null) {
+        Routes.sailor.navigate(deepLink.path);
       }
-      return;
+    }, onError: (OnLinkErrorException e) async {
+      print('onLinkError');
+      print(e.message);
     });
   }
 
   void _handleDeepLink(Map<String, dynamic> payload, bool isFromForeground) {
     _idForDeepLink = payload[NotificationHandler.idArgs];
     _pathForDeepLink = payload[NotificationHandler.pathArgs];
-    _launchUrlFromDeeplink = payload[NotificationHandler.urlArgs];
-    if (isFromForeground) {
-      _navigateToDeepLink();
+    _instanceIdForDeepLink = payload[NotificationHandler.instanceIdArgs];
+
+    if (isFromForeground &&
+        _pathForDeepLink != null &&
+        _pathForDeepLink.isNotEmpty) {
+      Routes.sailor.navigate(_pathForDeepLink, params: {
+        NotificationHandler.instanceIdArgs: _instanceIdForDeepLink,
+        NotificationHandler.idArgs: _idForDeepLink,
+      });
+      _pathForDeepLink = '';
     }
   }
 
   void _navigateToDeepLink() {
-    if (_idForDeepLink != null) {
-      Routes.sailor.navigate(_pathForDeepLink, params: _idForDeepLink);
-    } else if (_pathForDeepLink != null) {
-      Routes.sailor.navigate(_pathForDeepLink);
-    } else if (_launchUrlFromDeeplink != null &&
-        _launchUrlFromDeeplink.isNotEmpty) {
-      launch(_launchUrlFromDeeplink);
-      _launchUrlFromDeeplink = null;
-    }
-  }
-
-  void _navigateToDashboard(Function postRender) {
-    Routes.sailor.navigate(Routes.pageDashboard,
+    Routes.sailor.navigate(_pathForDeepLink,
         params: {
-          DashboardPage.isLogInParam: true,
-          DashboardPage.postRenderParam: postRender
+          NotificationHandler.instanceIdArgs: _instanceIdForDeepLink,
+          NotificationHandler.idArgs: _idForDeepLink,
+          NotificationHandler.isRootRouteArgs: true,
         },
         navigationType: NavigationType.pushReplace);
+    _pathForDeepLink = '';
   }
 
-  void _navigateToPreposition() {
-    Routes.sailor.navigate(Routes.pagePreposition,
-        navigationType: NavigationType.pushReplace);
+  void _navigateToDashboard(BuildContext context) {
+    Navigator.pushReplacement(context, dashboardPageRoute(context));
   }
 
-  void _navigateForBackgroundDeepLink(bool isLoggedIn) {
+  void _navigateToLoginPage() {
+    Routes.sailor.navigate(Routes.pageLogin,
+        navigationType: NavigationType.pushReplace,
+        params: {LoginPage.isChangeNumberPageParam: false});
+  }
+
+  void _navigateForBackGroundDeepLink(bool isLoggedIn, BuildContext context) {
     if (!isLoggedIn) {
-      _navigateToPreposition();
-    } else if (_pathForDeepLink != null) {
-      _navigateToDashboard(_navigateToDeepLink);
+      _navigateToLoginPage();
+    } else if (_pathForDeepLink != null && _pathForDeepLink.isNotEmpty) {
+      _navigateToDeepLink();
     } else {
-      _navigateToDashboard(null);
+      _navigateToDashboard(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(statusBarColor: Colors.white),
-    );
-    return MaterialApp(
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.white,
+    ));
+    return OKToast(
+      child: MaterialApp(
         theme: ThemeData(
+          pageTransitionsTheme: const PageTransitionsTheme(builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          }),
           backgroundColor: Palette.white,
           brightness: Brightness.light,
           primarySwatch: Palette.materialWhite,
-          accentColor: Palette.orange,
+          accentColor: Palette.purpleBlue,
           scaffoldBackgroundColor: Palette.white,
-          primaryIconTheme: IconThemeData(color: Palette.orange),
-          appBarTheme: const AppBarTheme(elevation: 0),
+          primaryIconTheme: IconThemeData(color: Palette.purpleBlue),
+          appBarTheme: AppBarTheme(
+              elevation: 0,
+              textTheme: TextTheme(
+                  title: TextStyle(
+                fontSize: 18,
+                color: Palette.dark,
+                fontFamily: FontFamilies.headerBold,
+              ))),
         ),
         debugShowCheckedModeBanner: false,
-        locale: const Locale('id'),
+        locale: const Locale('id', 'ID'),
         navigatorObservers: [
           FirebaseAnalyticsObserver(analytics: analyticHandler.analytics),
         ],
         navigatorKey: Routes.sailor.navigatorKey,
         onGenerateRoute: Routes.sailor.generator(),
         // ignore: prefer_const_literals_to_create_immutables
-        supportedLocales: [const Locale('id', '')],
+        supportedLocales: [const Locale('id', 'ID')],
         localizationsDelegates: [
           AppLocalization.delegate,
           const BackButtonTextDelegate('id'),
@@ -238,27 +197,10 @@ class _RuangMomAppState extends State<RuangMomApp> {
           GlobalCupertinoLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
         ],
-        localeResolutionCallback: (locale, supportedLocales) {
-          if (locale == null) {
-            debugPrint('*language locale is null!!!');
-            return supportedLocales.first;
-          }
-          // Check if the current device locale is supported
-          for (final supportedLocale in supportedLocales) {
-            if (supportedLocale.languageCode == locale.languageCode &&
-                supportedLocale.countryCode == locale.countryCode) {
-              return supportedLocale;
-            }
-          }
-          // If the locale of the device is not supported, use the first one
-          // from the list (English, in this case).
-          return supportedLocales.first;
-        },
         home: Scaffold(
-          body: SplashPage(
-              path: _pathForDeepLink,
-              id: _idForDeepLink,
-              deepLinkHandler: _navigateForBackgroundDeepLink),
-        ));
+          body: SplashPage(deepLinkHandler: _navigateForBackGroundDeepLink),
+        ),
+      ),
+    );
   }
 }
