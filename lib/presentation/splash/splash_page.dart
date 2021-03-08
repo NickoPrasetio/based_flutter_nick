@@ -2,6 +2,7 @@ import 'package:basedFlutter/based/modul/based_modul.dart';
 import 'package:basedFlutter/presentation/splash/bloc/splash_bloc.dart';
 import 'package:basedFlutter/presentation/splash/bloc/splash_event.dart';
 import 'package:basedFlutter/presentation/splash/bloc/splash_state.dart';
+import 'package:basedFlutter/util/palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -25,7 +26,13 @@ class SplashWidget extends StatelessWidget {
     return BlocBuilder<SplashBloc, SplashState>(
       builder: (BuildContext context, SplashState state) {
         if (state is InitLoaded) {
-          return Scaffold(body: _loadingView(context, state.isLoggedIn));
+          return Scaffold(
+              body: Container(
+                  height: MediaQuery.of(context).size.height,
+                  width: MediaQuery.of(context).size.width,
+                  color: Palette.lightBlueGrey,
+                  child: _loadingView(
+                      context, state.isLoggedIn)));
         } else {
           return Container();
         }
@@ -33,7 +40,8 @@ class SplashWidget extends StatelessWidget {
     );
   }
 
-  Widget _loadingView(BuildContext context, bool isLoggedIn) {
+  Widget _loadingView(
+      BuildContext context, bool isLoggedIn) {
     return Center(
       child: Container(
         margin: const EdgeInsets.all(10),
